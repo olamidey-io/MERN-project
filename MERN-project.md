@@ -193,6 +193,126 @@ Then i started the server using - **node server.js**. Below is an image showing 
 
 ![alt text](MERN-images/Capture-21.PNG)
 
+## **Step 7: Build and Sever the React Frontend**
+Now that your backend (Node.js + Express + MongoDB) is running, it's time to set up, build, and serve your React frontend on your EC2 instance.
+
+Building React means converting your React code into a production-ready format that the browser can understand. Serving React means making your frontend accessible from a browser (like http://your-ec2-ip).
+
+Now, create your frontend inside the MERN-project folder using **npx create-react-app client**. This creates a client folder and sets up a React project inside it as shown below.
+![alt text](MERN-images/Capture-22.PNG)
+
+ But since npx is not installed yet, install it using - **npm install -g npx**
+
+ Add React Import in App.js using - **vi src/App.js** and then add this line at the top of the file if missing - **import React from "react";** as shown below
+![alt text](MERN-images/Capture-23.PNG)
+
+Then run **npm run build**
+![alt text](MERN-images/Capture-24.PNG)
+
+The build was successful, but the issue now is a permission error when trying to install serve globally by running **sudo npm install -g serve** as shown below
+![alt text](MERN-images/Capture-25.PNG)
+
+Then serve your react app by running **serve -s build** as shown below
+![alt text](MERN-images/Capture-26.PNG)
+
+## **Step 8: Accessing my app on the browser**
+
+You might not be able to directly access the app on the browser, i first need to allow port 3000 in security group. Update the security group settings. Go to AWS EC2 Console → Instances → Your Instance → Security Groups.
+Edit Inbound Rules → Add a new rule:
+* Type: Custom TCP Rule
+* Protocol: TCP
+* Port Range: 3000
+* Source: 0.0.0.0/0 (or your specific IP for security)
+
+#### **Restart the React Server**
+First stop the running process by running **ps aux | grep serve**. finf the process PID and kill it with **kill pid**
+![alt text](MERN-images/Capture-27.PNG)
+
+Then restart the frontend server again using - **serve -s build -l 3000** as shown below
+![alt text](MERN-images/Capture-28.PNG)
+
+Then i tried accessing it on my browser with - **http://<your-ec2-public-ip>:3000** as shown below:
+![alt text](MERN-images/Capture-29.PNG)
+
+## **Step 9: installing and configuring nginx as a reverse proxy**
+
+My React app is currently being served using **serve -s build -l 3000**, but this method isn’t ideal for production because:
+* The server stops when you close the terminal.
+* It’s not optimized for handling traffic.
+
+### Solution? Use Nginx as a reverse proxy!
+A reverse proxy is a server that sits between your users and your actual application. Instead of users directly accessing your React app on port 3000, they access Nginx on port 80 (default HTTP port), and Nginx then forwards the request to your React app. So basically a reverse proxy is a server that sits in front of your backend (Node.js app) and frontend (React build files). It does two main things:
+
+* Routes Requests – It forwards client requests (from the browser) to your backend server.
+* Serves the React App – It serves your built frontend files directly.
+
+**Benefits of using Nginx as a reverse proxy:**
+
+* Users don’t need to type http://your-ip:3000, they can just use http://your-ip.
+* Nginx improves performance with caching and load balancing.
+* It adds security by hiding internal ports and configurations.
+
+**Installing Nginx**
+Exit from the client and remote repository project directory and change directory to connection to your instance, then run - **sudo yum install nginx -y** as shown below.
+![alt text](MERN-images/Capture-30.PNG)
+
+Start the nginx service using - **sudo systemctl start nginx**, then enable it to start on boot using - **sudo systemctl enable nginx**
+![alt text](MERN-images/Capture-31.PNG)
+
+Then confirm nginx is running using - **system ctl status**
+![alt text](MERN-images/Capture-32.PNG)
+
+**Configuring nginx for my MERN stack**
+Since I have both frontend (React) and backend (Node.js/Express), I will:
+
+* Serve the React frontend from **/var/www/html/**
+* Forward API requests to the Node.js backend running on a specific port.
+
+**Create a new nginx configuration file**
+Run - **sudo vi /etc/nginx/conf.d/mern.conf** and paste the configuration inside it as shown below:
+![alt text](MERN-images/Capture-33.PNG)
+
+To test if its actually working, i visisted my ec2 public ip on my browser to load nginx default page as seen below
+![alt text](MERN-images/Capture-34.PNG)
+
+**Move my react build to my nginx root directory**
+
+Moving my React build files to Nginx’s root directory is necessary because Nginx serves static files (HTML, CSS, JS) from a specified directory. If you don’t move the build folder, Nginx won't know where to find your React app, and users will see an error when trying to access the site.
+My React app's production files are inside the build folder. Move them to **/var/www/html/:**
+* **sudo rm -rf /var/www/html/***
+* sudo cp -r ~/MERN_ec2/client/build/* /var/www/html/
+
+But i first had this blocker below and resolve it
+![alt text](MERN-images/Capture-36.PNG)
+
+Since My React app's production files are inside the build folder, i moved my react build to my nginx root folder so that nginx knows where to find my React app, then i visited my instance public ip again to access the app on my browser, but rather than loading my react front end, its still the nginx default page that is loading. I resolved that blocker with commands below:
+![alt text](MERN-images/Capture-37.PNG)
+
+So below is my app being accessed on the browser
+![alt text](MERN-images/Capture-35.PNG)
+
+Since my md file is olnly apperas on my local machine and not contained in my ec2 instance yet, i can add it by doing:
+
+* **git init**
+* **git add .**
+* **git commit -m "staging my changes to ec2"**
+* **git remote add origin https://github.com/olamidey-io/MERN-project.git**
+* **git push -u origin main**
+
+If your remote repo and local repo doesnt match, you have to first do **git pull origin main --rebase** before **git push -u origin main**
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
